@@ -1,0 +1,113 @@
+#include <linux/module.h>
+#include <linux/init.h>
+#include <linux/fs.h>
+#include <linux/uaccess.h>
+#include <linux/cdev.h>
+
+#define DEVICE_NAME "simple_char_dev"
+#define BUF_LEN 1024
+
+static char device_buffer[BUF_LEN];
+static int buffer_size = 0;
+
+static dev_t dev_num;
+static struct cdev my_cdev;
+
+// Open
+static int my_open(struct inode *inode, struct file *file)
+{
+    pr_info("%s: Device opened\n", DEVICE_NAME);
+    return 0;
+}
+
+// Release
+static int my_release(struct inode *inode, struct file *file)
+{
+    pr_info("%s: Device closed\n", DEVICE_NAME);
+    return 0;
+}
+
+// Read
+static ssize_t my_read(struct file *file, char __user *buf, size_t len, loff_t *offset)
+{
+    int bytes_to_read;
+
+    if (*offset >= buffer_size)
+        return 0; // End of buffer
+
+    bytes_to_read = min((int)len, buffer_size - (int)(*offset));
+
+    if (copy_to_user(buf, device_buffer + *offset, bytes_to_read))
+        return -EFAULT;
+
+    *offset += bytes_to_read;
+    pr_info("%s: Read %d bytes\n", DEVICE_NAME, bytes_to_read);
+
+    return bytes_to_read;
+}
+
+// Write
+static ssize_t my_write(struct file *file, const char __user *buf, size_t len, loff_t *offset)
+{
+    int bytes_to_write;
+
+    if (*offset >= BUF_LEN)
+        return -ENOSPC;
+
+    bytes_to_write = min((int)len, BUF_LEN - (int)(*offset));
+
+    if (copy_from_user(device_buffer + *offset, buf, bytes_to_write))
+        return -EFAULT;
+
+    *offset += bytes_to_write;
+    buffer_size = max(buffer_size, (int)(*offset));
+    pr_info("%s: Wrote %d bytes\n", DEVICE_NAME, bytes_to_write);
+
+    return bytes_to_write;
+}
+
+// File operations
+static struct file_operations fops = {
+    .owner = THIS_MODULE,
+    .open = my_open,
+    .release = my_release,
+    .read = my_read,
+    .write = my_write,
+};
+
+// Module init
+static int __init my_init(void)
+{
+    // Allocate device number
+    if (alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME) < 0) {
+        pr_err("%s: Failed to allocate device number\n", DEVICE_NAME);
+        return -1;
+    }
+
+    // Init and add cdev
+    cdev_init(&my_cdev, &fops);
+    if (cdev_add(&my_cdev, dev_num, 1) < 0) {
+        unregister_chrdev_region(dev_num, 1);
+        pr_err("%s: Failed to add cdev\n", DEVICE_NAME);
+        return -1;
+    }
+
+    pr_info("%s: Module loaded, Major=%d Minor=%d\n", DEVICE_NAME, MAJOR(dev_num), MINOR(dev_num));
+    return 0;
+}
+
+// Module exit
+static void __exit my_exit(void)
+{
+    cdev_del(&my_cdev);
+    unregister_chrdev_region(dev_num, 1);
+    pr_info("%s: Module unloaded\n", DEVICE_NAME);
+}
+
+module_init(my_init);
+module_exit(my_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Example Author");
+MODULE_DESCRIPTION("Simple Character Device Driver with 1KB buffer");
+

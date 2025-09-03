@@ -1,0 +1,13 @@
+import subprocess
+
+def run_docker_cmd(workdir, command):
+    docker_cmd = [
+        "docker", "run", "--rm",
+        "-v", f"{workdir}:/workspace",
+        "-v", "/lib/modules:/lib/modules", 
+        "driver-eval"
+    ] + command
+
+    result = subprocess.run(docker_cmd, capture_output=True, text=True)
+    return result.stdout + result.stderr, result.returncode
+
