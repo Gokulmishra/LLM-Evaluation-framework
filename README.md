@@ -7,13 +7,28 @@ The goal is to assess correctness, functionality, compilation success, and code 
 
 ##  Features
 
-- ✅ **Compilation Check** – Verifies if generated code compiles without errors.  
-- ✅ **Correctness Evaluation** – Compares LLM output against expected behavior/test cases.  
-- ✅ **Functionality Testing** – Runs unit/integration tests to confirm code works as intended.  
-- ✅ **Code Quality Analysis** – Uses tools like **Clang-Tidy**, **Cppcheck**, and linters.  
-- ✅ **Automation Ready** – Scripts to streamline evaluation at scale.  ( in progress )
+-  **Compilation Check** – Verifies if generated code compiles without errors.  
+-  **Correctness Evaluation** – Compares LLM output against expected behavior/test cases.  
+-  **Functionality Testing** – Runs unit/integration tests to confirm code works as intended.  
+-  **Code Quality Analysis** – Uses tools like **Clang-Tidy**, **Cppcheck**, and linters.  
+-  **Automation Ready** – Scripts to streamline evaluation at scale.  ( in progress )
 
 ---
+
+1. **Input Layer**  
+   Generated driver code (from LLM or manually written) + Makefile.
+
+2. **Evaluation Engine**  
+   Scripts that run compilation, static analysis, style checks, and clang-tidy.
+
+3. **Metrics & Scoring**  
+   Collect quantitative and qualitative metrics, then score with weights.
+
+4. **Output Layer**  
+   JSON report with structured results (both human-readable and machine-parseable).
+
+---
+
 
 ##  Diagram 
 
@@ -55,14 +70,61 @@ The goal is to assess correctness, functionality, compilation success, and code 
                  │       Output JSON       │
                  │ (logs, errors, scores)  │
                  └─────────────────────────┘
+```
+---
+
+
+## Component Breakdown
+
+### 1. Input Layer
+
+**Source:** LLM-generated code (`driver.c`) + Makefile.  
+
+**Directory structure:**
+```
+driver/
+├── simple_driver.c
+└── Makefile
+```
 
 
 ---
 
-##  Features
+### 2. Evaluation Engine
 
-- ✅ **Compilation Check** – Verifies if generated code compiles without errors.  
-- ✅ **Correctness Evaluation** – Compares LLM output against expected behavior/test cases.  
-- ✅ **Functionality Testing** – Runs unit/integration tests to confirm code works as intended.  
-- ✅ **Code Quality Analysis** – Uses tools like **Clang-Tidy**, **Cppcheck**, and linters.  
-- ✅ **Automation Ready** – Scripts to streamline evaluation at scale.  ( in progress )
+Each evaluation step is modularized into Python scripts:
+
+#### **compile_eval.py**
+- Runs `make` inside Docker to check if the driver compiles.  
+- **Metrics collected:**  
+  - Compilation success/failure  
+  - Warnings  
+  - Errors  
+  - Raw log output  
+
+#### **checkpatch_eval.py**
+- Runs kernel’s `checkpatch.pl` to check style & coding standards.  
+- **Metrics collected:**  
+  - Number of style warnings/errors  
+  - Missing SPDX license  
+  - Indentation issues  
+
+#### **clang.py (clang-tidy)**
+- Runs `clang-tidy` with kernel headers to detect semantic bugs.  
+- **Metrics collected:**  
+  - Bug-prone issues  
+  - Analyzer warnings  
+  - Narrowing conversions  
+  - Missing includes  
+
+#### **evaluate.py**
+- Orchestrates all three scripts above to run the full evaluation pipeline.  
+
+---
+
+### 3. Metrics & Scoring
+
+- Combines results from all modules.  
+- Assigns weights for correctness, code quality, and security.  
+- Produces a **final score** for each evaluated code sample.  
+
