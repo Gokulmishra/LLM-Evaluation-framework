@@ -15,7 +15,54 @@ The goal is to assess correctness, functionality, compilation success, and code 
 
 ---
 
-##  Installation
+##  Diagram 
 
-The required dependencies are taken care of in Docker file
+```text
+                ┌──────────────────────────┐
+                │   Driver Code Generator  │  (LLM or Manual)
+                └─────────────┬────────────┘
+                              │
+                              ▼
+                ┌──────────────────────────┐
+                │       Driver Folder      │
+                │   (driver.c, Makefile)   │
+                └─────────────┬────────────┘
+                              │
+        ┌─────────────────────┼───────────────────────────┐
+        ▼                     ▼                           ▼
+┌──────────────────────┐  ┌───────────────────────┐  ┌────────────────────────┐
+│  Compilation Module  │  │   Static Analysis     │  │ Security & Safety Eval │
+│  (compile_eval.py)   │  │ (checkpatch, clang)   │  │ (security_eval.py)     │
+└──────────┬───────────┘  └───────────┬───────────┘  └──────────┬────────────┘
+           │                          │                        │
+           ▼                          ▼                        ▼
+ ┌───────────────────┐       ┌─────────────────────┐   ┌───────────────────────┐
+ │ Compilation Logs  │       │ Style & Bug Reports │   │ Security Issue Report │
+ │  (success/fail)   │       │ (warnings/errors)   │   │ (bounds, races, etc.) │
+ └──────────┬────────┘       └──────────┬──────────┘   └──────────┬────────────┘
+            │                           │                         │
+            └──────────────┬────────────┴─────────────────────────┘
+                           ▼                          
+                 ┌─────────────────────────┐
+                 │     Metrics & Scoring   │
+                 │      (scoring.py)       │
+                 │ correctness + quality + │
+                 │ security/safety weights │
+                 └─────────────┬───────────┘
+                               │
+                               ▼
+                 ┌─────────────────────────┐
+                 │       Output JSON       │
+                 │ (logs, errors, scores)  │
+                 └─────────────────────────┘
 
+
+---
+
+##  Features
+
+- ✅ **Compilation Check** – Verifies if generated code compiles without errors.  
+- ✅ **Correctness Evaluation** – Compares LLM output against expected behavior/test cases.  
+- ✅ **Functionality Testing** – Runs unit/integration tests to confirm code works as intended.  
+- ✅ **Code Quality Analysis** – Uses tools like **Clang-Tidy**, **Cppcheck**, and linters.  
+- ✅ **Automation Ready** – Scripts to streamline evaluation at scale.  ( in progress )
